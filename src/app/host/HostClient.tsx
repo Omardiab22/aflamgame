@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../../lib/supabaseClient"
+import { supabase } from "@/lib/supabaseClient"
 import { AppShell } from "@/components/AppShell"
 
 type Player = { id: string; name: string; score: number }
-type GameState = { status: string; phase: string; current_question_index: number }
+type GameState = {
+  status: string
+  phase: string
+  current_question_index: number
+  countdown_duration_sec?: number
+  question_duration_sec?: number
+  leaderboard_duration_sec?: number
+}
 
 export default function HostClient() {
   const router = useRouter()
@@ -16,7 +23,7 @@ export default function HostClient() {
   const refreshData = async () => {
     const { data: gs0 } = await supabase
       .from("game_state")
-      .select("status,phase,current_question_index")
+      .select("status,phase,current_question_index,countdown_duration_sec,question_duration_sec,leaderboard_duration_sec")
       .eq("id", "global")
       .single()
     if (gs0) setGs(gs0)
@@ -34,18 +41,74 @@ export default function HostClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const call = async (path: string) => {
+  const post = async (path: string) => {
     const res = await fetch(path, { method: "POST", credentials: "include" })
     const j = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(j?.error ?? "Unauthorized")
+    return j
+  }
 
-    if (!res.ok) {
-      alert(j?.error ?? "Unauthorized")
-      // لو الكوكي راحت/انتهت، رجّع للّوجين
+  const startGame = async () => {
+    try {
+      await post("/api/host/start")
+      await refreshData()
+
+      // ✅ Auto-begin بعد 5 ثواني (أو اللي في DB)
+      const cd = gs?.countdown_duration_sec ?? 5
+      setTimeout(async () => {
+        try {
+          await post("/api/host/begin")
+          await refreshData()
+        } catch {
+          // ignore
+        }
+      }, cd * 1000)
+    } catch (e: any) {
+      alert(e.message ?? "Start failed")
       router.refresh()
-      return
     }
+  }
 
-    await refreshData()
+  const closeQuestion = async () => {
+    try {
+      await post("/api/host/close")
+      await refreshData()
+
+      // ✅ Auto-next بعد 2 ثانية (مدة leaderboard)
+      const lb = gs?.leaderboard_duration_sec ?? 2
+      setTimeout(async () => {
+        try {
+          await post("/api/host/next")
+          await refreshData()
+        } catch {
+          // ignore
+        }
+      }, lb * 1000)
+    } catch (e: any) {
+      alert(e.message ?? "Close failed")
+      router.refresh()
+    }
+  }
+
+  const nextQuestion = async () => {
+    try {
+      await post("/api/host/next")
+      await refreshData()
+    } catch (e: any) {
+      alert(e.message ?? "Next failed")
+      router.refresh()
+    }
+  }
+
+  const cancelGame = async () => {
+    try {
+      await post("/api/host/cancel")
+      await refreshData()
+      // الناس هتتحول لوحدها للنتائج بسبب status=finished
+    } catch (e: any) {
+      alert(e.message ?? "Cancel failed")
+      router.refresh()
+    }
   }
 
   const logout = async () => {
@@ -69,17 +132,24 @@ export default function HostClient() {
     >
       <div className="panel p-5">
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-primary" onClick={() => call("/api/host/start")}>
+          <button className="btn btn-primary" onClick={startGame}>
             Start Game
           </button>
-          <button className="btn" onClick={() => call("/api/host/close")}>
+
+          <button className="btn" onClick={closeQuestion}>
             Close Q → Leaderboard
           </button>
-          <button className="btn" onClick={() => call("/api/host/next")}>
+
+          <button className="btn" onClick={nextQuestion}>
             Next Question
           </button>
+
           <button className="btn" onClick={() => router.push("/lobby")}>
             View Lobby
+          </button>
+
+          <button className="btn" onClick={cancelGame} style={{ borderColor: "rgba(239,68,68,0.35)" }}>
+            Cancel Game → Results
           </button>
         </div>
 

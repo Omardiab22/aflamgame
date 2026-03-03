@@ -2,17 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../../lib/supabaseClient"
-import { AppShell } from "../../../components/AppShell"
-import { QUESTIONS } from "../../../lib/questions"
-import { msLeft } from "../../../lib/utils"
+import { supabase } from "@/lib/supabaseClient"
+import { AppShell } from "@/components/AppShell"
+import { QUESTIONS } from "@/lib/questions"
+import { msLeft } from "@/lib/utils"
 
 type Player = { id: string; name: string; score: number; last_seen_at: string }
 type GameState = {
   status: string
-  phase: "question" | "leaderboard" | "lobby" | "finished"
+  phase: "countdown" | "question" | "leaderboard" | "lobby" | "finished"
   current_question_index: number
   phase_started_at: string | null
+  countdown_duration_sec: number
   question_duration_sec: number
   leaderboard_duration_sec: number
   question_set: string[] | null
@@ -49,7 +50,7 @@ export default function PlayPage() {
   }
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 100)
+    const t = setInterval(() => setNow(Date.now()), 120)
     return () => clearInterval(t)
   }, [])
 
@@ -138,7 +139,13 @@ export default function PlayPage() {
 
   const timeLeftMs = useMemo(() => {
     if (!gs) return 0
-    const dur = gs.phase === "question" ? gs.question_duration_sec : gs.leaderboard_duration_sec
+    const dur =
+      gs.phase === "countdown"
+        ? gs.countdown_duration_sec
+        : gs.phase === "question"
+        ? gs.question_duration_sec
+        : gs.leaderboard_duration_sec
+
     return msLeft(gs.phase_started_at, dur)
   }, [gs, now])
 
@@ -147,6 +154,7 @@ export default function PlayPage() {
   const submit = async (choiceIndex: number) => {
     if (!gs || gs.phase !== "question" || !q || !myId) return
     if (picked !== null) return
+    if (timeLeftMs === 0) return
 
     setPicked(choiceIndex)
 
@@ -172,6 +180,21 @@ export default function PlayPage() {
     )
   }
 
+  // ✅ Countdown screen
+  if (gs.phase === "countdown") {
+    return (
+      <AppShell title="الجيم هيبدأ" subtitle={`استعد… ${timeLeftSec}s`}>
+        <div className="panel p-5 text-center">
+          <div className="text-4xl font-extrabold">{timeLeftSec}</div>
+          <p className="mt-3 text-sm" style={{ color: "var(--muted)" }}>
+            الهوست بدأ الجيم—أول سؤال بعد ثواني.
+          </p>
+        </div>
+      </AppShell>
+    )
+  }
+
+  // Leaderboard phase
   if (gs.phase === "leaderboard") {
     return (
       <AppShell title="الترتيب" subtitle={`هيختفي بعد ${timeLeftSec}s`}>
@@ -210,6 +233,7 @@ export default function PlayPage() {
     )
   }
 
+  // Question phase
   return (
     <AppShell
       title={`سؤال ${gs.current_question_index + 1}`}
@@ -230,7 +254,6 @@ export default function PlayPage() {
           {q?.choices.map((c, idx) => {
             const disabled = picked !== null || timeLeftMs === 0
             const active = picked === idx
-
             return (
               <button
                 key={idx}
@@ -250,7 +273,7 @@ export default function PlayPage() {
         </div>
 
         <p className="mt-4 text-xs" style={{ color: "var(--muted)" }}>
-          اللي يقفل الموقع يختفي تلقائيًا من الليست (Presence).
+          بعد انتهاء الوقت، الترتيب هيظهر لحظيًا.
         </p>
       </div>
     </AppShell>

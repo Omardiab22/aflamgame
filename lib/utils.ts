@@ -7,9 +7,16 @@ export function shuffle<T>(arr: T[]) {
   return a
 }
 
-export function msLeft(startedAtIso: string | null, durationSec: number) {
-  if (!startedAtIso) return durationSec * 1000
-  const started = new Date(startedAtIso).getTime()
+function toMs(ts: string | Date | null | undefined) {
+  if (!ts) return null
+  if (ts instanceof Date) return ts.getTime()
+  const t = new Date(ts).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+export function msLeft(phaseStartedAt: string | Date | null, durationSec: number) {
+  const started = toMs(phaseStartedAt)
+  if (!started) return durationSec * 1000
   const now = Date.now()
   return Math.max(0, durationSec * 1000 - (now - started))
 }

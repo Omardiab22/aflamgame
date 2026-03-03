@@ -1,25 +1,25 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
-import { QUESTIONS } from "@/lib/questions"
-import { shuffle } from "@/lib/utils"
 import { assertHost } from "../_auth"
 
 export async function POST() {
   const auth = await assertHost()
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 })
 
-  const ids = shuffle(QUESTIONS.map((q) => q.id))
+  const { data: gs, error: gsErr } = await supabaseAdmin
+    .from("game_state")
+    .select("*")
+    .eq("id", "global")
+    .single()
+
+  if (gsErr || !gs) return Response.json({ error: gsErr?.message ?? "No game state" }, { status: 500 })
+  if (gs.status !== "running") return Response.json({ error: "Game not running" }, { status: 400 })
+  if (gs.phase !== "countdown") return Response.json({ error: "Not in countdown phase" }, { status: 400 })
 
   const { error } = await supabaseAdmin
     .from("game_state")
     .update({
-      status: "running",
-      phase: "countdown", // ✅ جديد
-      current_question_index: 0,
+      phase: "question",
       phase_started_at: new Date().toISOString(),
-      countdown_duration_sec: 5, // ✅ 5 ثواني قبل البداية
-      question_duration_sec: 3,
-      leaderboard_duration_sec: 2,
-      question_set: ids,
     })
     .eq("id", "global")
 
