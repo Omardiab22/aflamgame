@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   }
 
   if (username === u && password === p) {
-    createHostCookie()
+    await createHostCookie()
     return Response.json({ ok: true })
   }
 
