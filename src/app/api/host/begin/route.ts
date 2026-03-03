@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
-import { assertHost } from "../_auth"
+import { assertHost } from "../../_auth"
 
 export async function POST() {
   const auth = await assertHost()

@@ -1,6 +1,5 @@
-import { supabaseAdmin } from "../../../../../lib/supabaseAdmin"
-import { QUESTIONS } from "../../../../../lib/questions"
-import { assertHost } from "../_auth"
+import { supabaseAdmin } from "@/lib/supabaseAdmin"
+import { assertHost } from "../../_auth"
 
 export async function POST() {
   const auth = await assertHost()
@@ -12,36 +11,36 @@ export async function POST() {
     .eq("id", "global")
     .single()
 
-  if (gsErr || !gs) {
-    return Response.json({ error: gsErr?.message ?? "No game state" }, { status: 500 })
-  }
+  if (gsErr || !gs) return Response.json({ error: gsErr?.message ?? "No game state" }, { status: 500 })
   if (gs.status !== "running") return Response.json({ error: "Game not running" }, { status: 400 })
   if (gs.phase !== "question") return Response.json({ error: "Not in question phase" }, { status: 400 })
 
-  const qId = gs.question_set?.[gs.current_question_index]
-  const q = QUESTIONS.find((x) => x.id === qId)
-  if (!q) return Response.json({ error: "Question not found" }, { status: 400 })
-
-  // answers for this question index
+  // هات إجابات السؤال الحالي
   const { data: ans, error: ansErr } = await supabaseAdmin
     .from("answers")
-    .select("player_id,is_correct")
+    .select("player_id,is_correct,submitted_at")
     .eq("question_index", gs.current_question_index)
+    .order("submitted_at", { ascending: true })
 
   if (ansErr) return Response.json({ error: ansErr.message }, { status: 500 })
 
-  // +5 لكل لاعب صح (مرة واحدة)
+  // أول إجابة بس لكل لاعب
+  const seen = new Set<string>()
   const correctPlayers = new Set<string>()
+
   for (const a of ans ?? []) {
+    if (seen.has(a.player_id)) continue
+    seen.add(a.player_id)
     if (a.is_correct) correctPlayers.add(a.player_id)
   }
 
+  // +5 للي جاوب صح
   for (const pid of correctPlayers) {
     const { error: rpcErr } = await supabaseAdmin.rpc("increment_player_score", { pid, inc: 5 })
     if (rpcErr) return Response.json({ error: rpcErr.message }, { status: 500 })
   }
 
-  // move to leaderboard phase
+  // روح leaderboard
   const { error: upErr } = await supabaseAdmin
     .from("game_state")
     .update({
@@ -51,5 +50,5 @@ export async function POST() {
     .eq("id", "global")
 
   if (upErr) return Response.json({ error: upErr.message }, { status: 500 })
-  return Response.json({ ok: true, awarded: correctPlayers.size })
+  return Response.json({ ok: true })
 }

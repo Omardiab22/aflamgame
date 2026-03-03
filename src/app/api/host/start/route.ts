@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { QUESTIONS } from "@/lib/questions"
 import { shuffle } from "@/lib/utils"
-import { assertHost } from "../_auth"
+import { assertHost } from "../../_auth"
 
 export async function POST() {
   const auth = await assertHost()
@@ -13,12 +13,14 @@ export async function POST() {
     .from("game_state")
     .update({
       status: "running",
-      phase: "countdown", // ✅ جديد
+      phase: "countdown",
       current_question_index: 0,
       phase_started_at: new Date().toISOString(),
-      countdown_duration_sec: 5, // ✅ 5 ثواني قبل البداية
-      question_duration_sec: 3,
+
+      countdown_duration_sec: 5,
+      question_duration_sec: 5,       // ✅ 5 ثواني للسؤال
       leaderboard_duration_sec: 2,
+
       question_set: ids,
     })
     .eq("id", "global")
