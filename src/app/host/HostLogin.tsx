@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { AppShell } from "../../../../components/AppShell"
+import { AppShell } from "@/components/AppShell"
 
 export default function HostLogin() {
   const router = useRouter()

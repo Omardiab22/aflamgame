@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabaseClient"
-import { AppShell } from "../../../components/AppShell"
+import { AppShell } from "@/components/AppShell"
 
 type Player = { id: string; name: string; score: number }
 type GameState = { status: string; phase: string; current_question_index: number }
