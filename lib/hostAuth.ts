@@ -8,7 +8,7 @@ function hmac(data: string) {
   return crypto.createHmac("sha256", secret).update(data).digest("hex")
 }
 
-// ✅ لازم async في Next 15
+// Next 15: cookies() is async
 export async function createHostCookie() {
   const ts = Date.now().toString()
   const sig = hmac(ts)
@@ -20,7 +20,7 @@ export async function createHostCookie() {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 12, // 12 hours
+    maxAge: 60 * 60 * 12,
   })
 }
 
@@ -29,7 +29,6 @@ export async function clearHostCookie() {
   store.set(COOKIE_NAME, "", { path: "/", maxAge: 0 })
 }
 
-// ✅ لازم async برضه
 export async function isHostAuthed() {
   const store = await cookies()
   const v = store.get(COOKIE_NAME)?.value
