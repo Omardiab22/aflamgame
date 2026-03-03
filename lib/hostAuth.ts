@@ -8,12 +8,14 @@ function hmac(data: string) {
   return crypto.createHmac("sha256", secret).update(data).digest("hex")
 }
 
-export function createHostCookie() {
+// ✅ لازم async في Next 15
+export async function createHostCookie() {
   const ts = Date.now().toString()
   const sig = hmac(ts)
   const value = `${ts}.${sig}`
 
-  cookies().set(COOKIE_NAME, value, {
+  const store = await cookies()
+  store.set(COOKIE_NAME, value, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -22,13 +24,17 @@ export function createHostCookie() {
   })
 }
 
-export function clearHostCookie() {
-  cookies().set(COOKIE_NAME, "", { path: "/", maxAge: 0 })
+export async function clearHostCookie() {
+  const store = await cookies()
+  store.set(COOKIE_NAME, "", { path: "/", maxAge: 0 })
 }
 
-export function isHostAuthed() {
-  const v = cookies().get(COOKIE_NAME)?.value
+// ✅ لازم async برضه
+export async function isHostAuthed() {
+  const store = await cookies()
+  const v = store.get(COOKIE_NAME)?.value
   if (!v) return false
+
   const [ts, sig] = v.split(".")
   if (!ts || !sig) return false
   if (hmac(ts) !== sig) return false

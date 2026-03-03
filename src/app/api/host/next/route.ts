@@ -2,7 +2,7 @@ import { supabaseAdmin } from "../../../../../lib/supabaseAdmin"
 import { assertHost } from "../_auth"
 
 export async function POST() {
-  const auth = assertHost()
+  const auth = await assertHost()
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 })
 
   const { data: gs, error: gsErr } = await supabaseAdmin
@@ -11,7 +11,9 @@ export async function POST() {
     .eq("id", "global")
     .single()
 
-  if (gsErr || !gs) return Response.json({ error: gsErr?.message ?? "No game state" }, { status: 500 })
+  if (gsErr || !gs) {
+    return Response.json({ error: gsErr?.message ?? "No game state" }, { status: 500 })
+  }
   if (gs.status !== "running") return Response.json({ error: "Game not running" }, { status: 400 })
   if (gs.phase !== "leaderboard") return Response.json({ error: "Not in leaderboard phase" }, { status: 400 })
 

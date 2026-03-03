@@ -4,7 +4,7 @@ import { shuffle } from "../../../../../lib/utils"
 import { assertHost } from "../_auth"
 
 export async function POST() {
-  const auth = assertHost()
+  const auth = await assertHost()
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 })
 
   const ids = shuffle(QUESTIONS.map((q) => q.id))
